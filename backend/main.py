@@ -177,7 +177,7 @@ def start_session(request: StartSessionRequest):
 
     # Create new agent instance for this session
     # This initializes ChromaDB connection, Groq LLM, and LangGraph
-    agent = ClimateAgentAgent(persona_key=request.persona_key)
+    agent = ClimateAgent(persona_key=request.persona_key)
 
     # Store in session store
     sessions[session_id] = agent
