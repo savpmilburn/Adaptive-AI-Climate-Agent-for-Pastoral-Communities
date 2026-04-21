@@ -1,6 +1,3 @@
-# LangGraph implementation of adaptive AI climate agent using:
-# ReAct reasoning loop, ChromaDB for data retrieval, Groq LLM for response generation + agent behavior
-
 """
 climate_agent.py
 
@@ -85,6 +82,10 @@ class AgentState(TypedDict):
     reasoning_trace: str # AI climate agent's reasoning trace - why did it choose that chunk?
     agent_response: str # final output response to farmer
     persona_key: str # active farmer persona type
+
+    # Adding memory + farmer_id to AgentState so memory can be accessed in respond_node:
+    memory_context: str # formatted String of relevant memories
+    farmer_id: str # unique farmer ID for Mem0
 
 # Connect to existing ChromaDB climate database
 def initialize_components():
@@ -189,6 +190,31 @@ def rank_node(state: AgentState) -> dict:
 
     return {"selected_chunk": selected}
 
+def retrieve_memory_node(state: AgentState, memory) -> dict:
+    """
+    NODE: Retrieves relevant memories from Mem0 before reasoning.
+
+    Runs semantic search against stored farmer memories using
+    the current farmer message as the query.
+    Injects formatted memory context into state for use in
+    the respond node's system prompt.
+    """
+    farmer_message = state["farmer_message"]
+    farmer_id = state["farmer_id"]
+
+    # Retrieve relevant memories from Mem0 using farmer message as query
+    relevant_memories = retrieve_memories(
+        memory,
+        farmer_id,
+        farmer_message,
+        limit=3
+    )
+
+    # Format memories into readable string for system prompt injection
+    memory_context = format_memories_for_context(relevant_memories)
+
+    return {"memory_context": memory_context}
+
 
 def reason_node(state: AgentState, llm) -> dict:
     """
@@ -267,6 +293,9 @@ def respond_node(state: AgentState, llm) -> dict:
     else:
         framing = "Use descriptive narrative language that paints a picture of what the climate would feel like."
 
+    # Retrieve relevant memories about this farmer: give AI agent context from previous sessions
+    memory_context = state["memory_context"]
+
     # System prompt defining AI climate agent's role + behavior
     system_prompt = f"""You are an adaptive climate communication agent helping farmers in Soule (Xiberoa), France understand their climate future.
 
@@ -277,6 +306,8 @@ Preferred communication style: {persona['response_style']}
 
 Current belief state summary:
 {belief_summary(belief)}
+
+{memory_context}
 
 IMPORTANT GUIDELINES:
 - Speak directly to the farmer in a warm, respectful tone
@@ -349,7 +380,7 @@ def update_belief_node(state: AgentState) -> dict:
     return {"belief": updated_belief}
 
 # Build LangGraph
-def build_agent(collection, llm):
+def build_agent(collection, llm, memory):
     """
     Assembles the LangGraph state machine connecting all nodes.
 
@@ -369,6 +400,7 @@ def build_agent(collection, llm):
     # We use lambda functions to inject dependencies (collection, llm) without making them part of the state
     workflow.add_node("retrieve", lambda state: retrieve_node(state, collection))
     workflow.add_node("rank", rank_node)
+    workflow.add_node("retrieve_memory", lambda state: retrieve_memory_node(state, memory))
     workflow.add_node("reason", lambda state: reason_node(state, llm))
     workflow.add_node("respond", lambda state: respond_node(state, llm))
     workflow.add_node("update_belief", update_belief_node)
@@ -376,7 +408,8 @@ def build_agent(collection, llm):
     # Define the flow between nodes + compile LangGraph graph using simple linear chain
     workflow.set_entry_point("retrieve") # tells LangGraph were to start
     workflow.add_edge("retrieve", "rank") 
-    workflow.add_edge("rank", "reason")
+    workflow.add_edge("rank", "retrieve_memory")
+    workflow.add_edge("retrieve_memory", "reason")
     workflow.add_edge("reason", "respond")
     workflow.add_edge("respond", "update_belief")
     workflow.add_edge("update_belief", END) # mark finish
@@ -384,7 +417,7 @@ def build_agent(collection, llm):
     # Compile the graph into a runnable app
     app = workflow.compile()
 
-    print("LangGraph agent compiled successfully")
+    print("LangGraph agent compiled with memory successfully")
 
     return app
 
@@ -408,14 +441,16 @@ class ClimateAgent:
         # Initialize ChromaDB climate database + Groq LLM
         self.collection, self.llm = initialize_components()
 
-        # Build LangGraph app
-        self.app = build_agent(self.collection, self.llm)
-
         # Initialize Mem0 memory
         self.memory = initialize_memory()
 
+        # Build LangGraph app
+        self.app = build_agent(self.collection, self.llm, self.memory)
+
         # Build farmer ID from persona for memory namespacing
-        self.farmer_id = f"{persona_key}_{persona['name'].lower().replace(' ', '_')}"
+        self.persona_key = persona_key
+        self.persona = FARMER_PERSONAS[persona_key]
+        self.farmer_id = f"{persona_key}_{self.persona['name'].lower().replace(' ', '_')}"
 
         # Load any existing memories from previous sessions
         existing_memories = get_all_memories(self.memory, self.farmer_id)
@@ -425,11 +460,7 @@ class ClimateAgent:
                 print(f"  - {mem.get('memory', '')}")
         else:
             print("No previous memories found — fresh start")
-
-        # Set farmer persona
-        self.persona_key = persona_key
-        self.persona = FARMER_PERSONAS[persona_key]
-
+            
         # Initialize AI climate agent state
         self.state = {
             "farmer_message": "",
@@ -439,7 +470,9 @@ class ClimateAgent:
             "selected_chunk": {},
             "reasoning_trace": "",
             "agent_response": "",
-            "persona_key": persona_key
+            "persona_key": persona_key, 
+            "memory_context": "",
+            "farmer_id": self.farmer_id
         } # self.state
 
         print(f"Agent ready. Farmer: {self.persona['name']}")
@@ -478,11 +511,22 @@ class ClimateAgent:
         self.state["selected_chunk"] = result["selected_chunk"]
         self.state["reasoning_trace"] = result["reasoning_trace"]
 
+        # Store this exchange in Mem0 memory
+        store_memories(
+            self.memory,
+            self.farmer_id,
+            {
+                "farmer": farmer_message,
+                "agent": result["agent_response"]
+            }
+        )
+        
         return {
             "response": result["agent_response"],
             "belief": result["belief"],
             "reasoning": result["reasoning_trace"],
-            "selected_chunk": result["selected_chunk"]
+            "selected_chunk": result["selected_chunk"], 
+            
         } # return
 
 
@@ -512,7 +556,9 @@ class ClimateAgent:
             "selected_chunk": {},
             "reasoning_trace": "",
             "agent_response": "",
-            "persona_key": self.persona_key
+            "persona_key": self.persona_key, 
+            "memory_context": "", 
+            "farmer_id": self.farmer_id
         }
 
         print(f"Agent reset. Persona: {self.persona['name']}")
