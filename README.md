@@ -1,5 +1,5 @@
 # Adaptive AI Climate Agent 
-## Co-Created, High-Resolution Climate Scenario Narratives for Transhumant Pastoral Communities
+## Expanding UGA VIPR Research: Co-Created, High-Resolution Climate Scenario Narratives for Transhumant Pastoral Communities
 An AI agent that models a farmer's belief state about their climate future + adaptively selects & frames PCS-inspired climate data to update that belief & improve understanding of projected climate/weather scenarios & its real-world impacts regarding decision making for livestock + farming management, cheese production, haymaking, water supply, etc. in Soule, France. 
 * Grounded in Bayesian brain theory (Knill & Pouget, 2004)
 * Explores the Free Energy Principle (Friston, 2010)
