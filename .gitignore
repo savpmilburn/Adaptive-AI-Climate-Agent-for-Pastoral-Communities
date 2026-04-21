@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 chroma_db/
 .venv/
+mem0_db/
