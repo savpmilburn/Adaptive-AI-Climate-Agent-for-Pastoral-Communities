@@ -52,6 +52,15 @@ from backend.agent.belief_model import (
     FARMER_PERSONAS
 ) # belief_model.py
 
+# Import Mem0 memory
+from backend.memory.farmer_memory import (
+    initialize_memory,
+    store_memories,
+    retrieve_memories,
+    get_all_memories,
+    format_memories_for_context
+)
+
 # AI climate agent state
 class AgentState(TypedDict):
     """
@@ -401,6 +410,21 @@ class ClimateAgent:
 
         # Build LangGraph app
         self.app = build_agent(self.collection, self.llm)
+
+        # Initialize Mem0 memory
+        self.memory = initialize_memory()
+
+        # Build farmer ID from persona for memory namespacing
+        self.farmer_id = f"{persona_key}_{persona['name'].lower().replace(' ', '_')}"
+
+        # Load any existing memories from previous sessions
+        existing_memories = get_all_memories(self.memory, self.farmer_id)
+        if existing_memories:
+            print(f"Loaded {len(existing_memories)} memories from previous sessions")
+            for mem in existing_memories:
+                print(f"  - {mem.get('memory', '')}")
+        else:
+            print("No previous memories found — fresh start")
 
         # Set farmer persona
         self.persona_key = persona_key
