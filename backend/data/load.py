@@ -97,7 +97,7 @@ def load_knowledge_base():
     # Now have searchable climate database
 
     # Print success messages
-    print(f"Successfully loaded {len(STORYLINES)} chunks into vipr_content collection.")
+    print(f"Successfully loaded {len(STORYLINES)} chunks into PCS_climate_content collection.")
     print("Climate database is ready.")
 
     # Verify ingestion by checking count - should be 20
