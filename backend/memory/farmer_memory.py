@@ -29,124 +29,91 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from dotenv import load_dotenv
 load_dotenv()
 
-from mem0 import Memory
+from mem0 import Memory # Import Mem0 memory class
 # Initiatlize Mem0:
 def initialize_memory():
     """
     Initializes Mem0 memory client.
-
-    Uses Mem0's default configuration which stores memories in local vector database using 
-    the same all-MiniLM-L6-v2 embedding model as ChromaDB.
-    Memories persist in a local file between server restarts.
-
-    Returns:
-        Mem0 Memory instance
     """
-    # Initialize with default config
-    # This uses local storage — no cloud, no API key needed
-    # Memories stored in ~/.mem0/ on your machine
-    memory = Memory()
-    print("Mem0 memory initialized — local storage")
-    return memory
-
-# Memory operations:
-def store_memories(memory: Memory, farmer_id: str, conversation_turn: dict) -> list:
-    """
-    Extracts + stores key facts from 1 conversation turn.
-
-    Mem0 automatically analyzes the conversation text + extracts
-    memorable facts including farmer concerns, opinions, years mentioned,
-    skepticism signals, + belief-relevant statements.
-
-    Args:
-        memory: Mem0 Memory instance
-        farmer_id: unique identifier for this farmer persona
-        conversation_turn: dict with 'farmer' and 'agent' keys
-                          containing the text of one exchange
-
-    Returns:
-        list of memory objects that were stored
-    """
-
-    # Format conversation as list of message dicts
-    # Mem0 expects this format for memory extraction
-    messages = [
-        {
-            "role": "user",
-            "content": conversation_turn["farmer"]
+    # Configures Mem0 to use Groq as LLM to read conversations + extract memorable facts
+    config = {
+        "llm": {
+            "provider": "groq",
+            "config": {
+                "model": "llama-3.3-70b-versatile",
+                "api_key": os.getenv("GROQ_API_KEY")
+            }
         },
-        {
-            "role": "assistant",
-            "content": conversation_turn["agent"]
+        # Configures Mem0 to use HuggingFace's embedding model instead of OpenAI (requires paid API key)
+        "embedder": {
+            "provider": "huggingface",
+            "config": {
+                "model": "multi-qa-MiniLM-L6-cos-v1"
+            }
+        },
+        # Mem0 stores memories in local ChromaDB db at mem0_db/ in project root for local, free memory storage
+        "vector_store": {
+            "provider": "chroma",
+            "config": {
+                "collection_name": "farmer_memories",
+                "path": os.path.join(
+                    os.path.dirname(
+                        os.path.dirname(
+                            os.path.dirname(os.path.abspath(__file__))
+                        )
+                    ),
+                    "mem0_db"
+                )
+            }
         }
-    ] # messages 
+    }
 
-    # Store memories: 
-    # Mem0 automatically extracts key facts from conversation + stores them for this farmer
-    result = memory.add(
-        messages,
-        user_id=farmer_id
-    ) # result
-
+    # Create Mem0 Memory instance using config above + return it
+    try:
+        memory = Memory.from_config(config)
+        print("Mem0 memory initialized — Groq LLM + HuggingFace embeddings + ChromaDB storage")
+        print(f"Memory object type: {type(memory)}")
+        return memory
+    except Exception as e:
+        print(f"Mem0 initialization failed: {e}")
+        print(f"Error type: {type(e)}")
+        raise
+    
+# Memory operations:
+# Take 1 conversation exchange, format as message list, + passes to Mem0
+# Reads conversation, uses Groq LLM to extract key facts, converts to vector embeddings, + stores w/ farmer_id
+def store_memories(memory: Memory, farmer_id: str, conversation_turn: dict) -> list:
+    messages = [
+        {"role": "user", "content": conversation_turn["farmer"]},
+        {"role": "assistant", "content": conversation_turn["agent"]}
+    ]
+    # Mem0 v2.0.0 uses user_id as keyword argument
+    result = memory.add(messages, user_id=farmer_id)
     stored_count = len(result.get("results", []))
     print(f"Stored {stored_count} memories for farmer: {farmer_id}")
-
     return result.get("results", [])
 
-
+# Searches stored memories for specific farmer using semantic similarity against query string
 def retrieve_memories(memory: Memory, farmer_id: str, query: str, limit: int = 5) -> list:
-    """
-    Retrieves relevant memories about a farmer given a query.
-
-    Mem0 uses semantic search to find memories most relevant
-    to the current conversation context — similar to how the
-    hippocampus retrieves relevant episodic memories given
-    a current environmental cue.
-
-    Args:
-        memory: Mem0 Memory instance
-        farmer_id: unique identifier for this farmer persona
-        query: current context to search memories against
-               usually the farmer's most recent message
-        limit: maximum number of memories to retrieve
-
-    Returns:
-        list of relevant memory dicts with 'memory' text field
-    """
-
+    # Mem0 v2.0.0 uses filters dict for user filtering
     results = memory.search(
         query=query,
-        user_id=farmer_id,
+        filters={"user_id": farmer_id},
         limit=limit
     )
-
     memories = results.get("results", [])
     print(f"Retrieved {len(memories)} memories for farmer: {farmer_id}")
-
     return memories
 
-
+# Returns all stored memory for farmer regardless of relevance so AI agent knows complete history
 def get_all_memories(memory: Memory, farmer_id: str) -> list:
-    """
-    Returns all stored memories for a farmer.
-
-    Used when starting a new session to load complete
-    farmer history before the conversation begins.
-
-    Args:
-        memory: Mem0 Memory instance
-        farmer_id: unique identifier for this farmer persona
-
-    Returns:
-        list of all memory dicts for this farmer
-    """
-
-    results = memory.get_all(user_id=farmer_id)
+    # Mem0 v2.0.0 uses filters dict instead of user_id parameter
+    results = memory.get_all(filters={"user_id": farmer_id})
     memories = results.get("results", [])
     print(f"Total memories for {farmer_id}: {len(memories)}")
     return memories
 
-
+# Convert list of Mem0 memory objects into readable string
 def format_memories_for_context(memories: list) -> str:
     """
     Formats a list of memory dicts into a readable string
@@ -171,7 +138,7 @@ def format_memories_for_context(memories: list) -> str:
 
     return "\n".join(lines)
 
-
+# Delete all memories for given farmer
 def delete_farmer_memories(memory: Memory, farmer_id: str) -> bool:
     """
     Deletes all memories for a specific farmer.
