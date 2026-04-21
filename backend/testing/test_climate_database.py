@@ -2,7 +2,7 @@
 test_climate_database.py
 
 Check to verify ChromaDB database loaded correctly by running:
-python test_climate_database.py
+python testing/test_climate_database.py
 """
 
 import chromadb
