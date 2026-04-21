@@ -1,0 +1,1 @@
+# Mem0 integration: storing + retrieiving each farmer's interaction history across sessions

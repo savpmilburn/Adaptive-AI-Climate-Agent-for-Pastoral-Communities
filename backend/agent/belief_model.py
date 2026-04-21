@@ -1,0 +1,2 @@
+# Defines + manages farmer belief vector: probability distribution over 4 plausible climate futures: Med. Shift, Moist Atlantic, Tropical Basque, No Change
+# Contains logic for updating belief vector after each farmer exchange + using current beleif state to rank which climate content chunks to retrieve

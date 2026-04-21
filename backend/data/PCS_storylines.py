@@ -1,0 +1,2 @@
+# 3 PCS-inspired climate storylines from UGA VIPR WeatherRisk Climate Futures research Spring 2026
+# Contains storylines, temporal analogs, ecological notes, tagged w/ metadata of storyline name, elevation band, season, abstraction level, farmer concern

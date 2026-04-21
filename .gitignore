@@ -1,0 +1,5 @@
+# Files to ignore for GitHub
+.env
+__pycache__/
+*.pyc
+chroma_db/
