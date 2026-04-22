@@ -10,6 +10,9 @@ const archivo = Archivo({
 export const metadata = {
   title: "Adaptive Climate Agent",
   description: "WeatherRisk VIPR — UGA",
+  icons: {
+    icon: "/AI_Agent_Icon.png",
+  },
 };
 
 export default function RootLayout({ children }) {
