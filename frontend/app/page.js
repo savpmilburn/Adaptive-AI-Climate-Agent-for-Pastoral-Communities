@@ -186,7 +186,7 @@ export default function Home() {
       <div className="header">
         <div>
           <div className="header-title">
-            Adaptive AI Climate Agent for Pastoral Communities
+            Adaptive AI Climate Agent for Pastoral Communities in Soule, France
           </div>
           <div className="header-subtitle">
             VIPR WeatherRisk: Climate Futures — University of Georgia
