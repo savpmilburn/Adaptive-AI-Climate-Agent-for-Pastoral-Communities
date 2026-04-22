@@ -189,7 +189,7 @@ export default function Home() {
             Adaptive AI Climate Agent for Pastoral Communities in Soule, France
           </div>
           <div className="header-subtitle">
-            VIPR WeatherRisk: Climate Futures — University of Georgia
+            VIPR WeatherRisk: Climate Futures @  University of Georgia
           </div>
         </div>
         <button className="reset-button" onClick={handleReset}>
@@ -212,7 +212,7 @@ export default function Home() {
           lineHeight: "1.6",
           fontWeight: 700, 
           fontFamily: "var(--font-ranade)",
-          maxWidth: "900px"
+          maxWidth: "890px"
         }}>
           This <span style={{ color: "var(--color-accent-yellow)"}}>AI climate agent</span> models a <span style={{ color: "var(--color-accent-red)"}}>farmer&apos;s belief state</span> about their climate future + adaptively selects content from co-produced{" "}
           <span style={{ color: "var(--color-accent-yellow)"}}>VIPR climate scenarios</span>

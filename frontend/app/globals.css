@@ -42,7 +42,7 @@ body {
 
 .header-title {
   font-family: var(--font-archivo);
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 600;
   color: var(--color-text-light);
   letter-spacing: 1px;
