@@ -8,7 +8,7 @@ const archivo = Archivo({
 });
 
 export const metadata = {
-  title: "Adaptive Climate Agent",
+  title: "Adaptive AI Climate Agent",
   description: "WeatherRisk VIPR — UGA",
   icons: {
     icon: "/AI_Agent_Icon.png",
