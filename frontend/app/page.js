@@ -223,6 +223,8 @@ export default function Home() {
           Left panel: the conversation between the <span style={{ color: "var(--color-accent-yellow)"}}>AI climate agent</span> + <span style={{ color: "var(--color-accent-red)"}}>farmer</span>.{" "}
           <br/>
           Right panel: the <span style={{ color: "var(--color-accent-red)"}}>farmer&apos;s evolving belief vector</span> in real time.
+          <br/>
+          Use the dropdown to select a <span style={{ color: "var(--color-accent-red)"}}>farmer persona</span> & start a conversation
         </div>
       </div>
 
