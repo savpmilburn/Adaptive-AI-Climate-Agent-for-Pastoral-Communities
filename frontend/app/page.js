@@ -142,19 +142,22 @@ export default function Home() {
       setSelectedStoryline(data.selected_storyline);
       setTurnCount(data.turn_number);
     } catch (error) {
-      console.error("Chat error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "agent",
-          content: "Sorry, something went wrong. Please try again.",
-          storyline: "",
-          abstraction: "",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
+        const isRateLimit = error?.response?.status === 429 ||
+          error?.response?.data?.detail?.includes("rate") ||
+          error?.message?.includes("429");
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "agent",
+            content: isRateLimit
+              ? "The free API token limit has been reached for today. Please try again in a few minutes or tomorrow. This is a limitation of the free Groq tier used in this prototype."
+              : "Sorry, something went wrong. Please try again.",
+            storyline: "",
+            abstraction: "",
+          },
+        ]);
+      }
   }
 
   function handleKeyDown(e) {
