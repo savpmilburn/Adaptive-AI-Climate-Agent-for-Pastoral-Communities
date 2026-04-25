@@ -74,6 +74,10 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const chatEndRef = useRef(null);
+  // Groq free API key daily token limit estimate
+  const [tokensUsed, setTokensUsed] = useState(0);
+  const TOKEN_LIMIT = 100000;
+  const TOKENS_PER_TURN_ESTIMATE = 3400;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -141,11 +145,9 @@ export default function Home() {
       setReasoning(data.reasoning);
       setSelectedStoryline(data.selected_storyline);
       setTurnCount(data.turn_number);
+      setTokensUsed(prev => prev + TOKENS_PER_TURN_ESTIMATE);
     } catch (error) {
-        const isRateLimit = error?.response?.status === 429 ||
-          error?.response?.data?.detail?.includes("rate") ||
-          error?.message?.includes("429");
-
+        const isRateLimit = error?.response?.status === 429 || error?.response?.data?.detail?.includes("rate") || error?.message?.includes("429");
         setMessages((prev) => [
           ...prev,
           {
@@ -157,6 +159,8 @@ export default function Home() {
             abstraction: "",
           },
         ]);
+      } finally {
+        setIsLoading(false);
       }
   }
 
@@ -392,6 +396,21 @@ export default function Home() {
                 {turnCount === 1 ? "turn" : "turns"} completed
               </div>
             )}
+
+            {tokensUsed > 0 && (
+                <div style={{
+                  fontSize: "12px",
+                  fontFamily: "var(--font-archivo)",
+                  color: tokensUsed > 80000 
+                    ? "var(--color-accent-red)" 
+                    : "var(--color-text-light-secondary)",
+                  textAlign: "right",
+                  marginTop: "4px"
+                }}>
+                  ~{tokensUsed.toLocaleString()} / {TOKEN_LIMIT.toLocaleString()} tokens used today
+                  {tokensUsed > 80000 && " — approaching limit"}
+                </div>
+              )}
           </div>
         </div>
       </div>
