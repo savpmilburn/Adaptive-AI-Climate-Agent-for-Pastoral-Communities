@@ -21,7 +21,6 @@ Privacy note:
     Acceptable for prototype with synthetic personas.
     Production deployment with real farmers would require local Mem0 deployment for data privacy.
 """
-
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -29,13 +28,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from dotenv import load_dotenv
 load_dotenv()
 
-from mem0 import MemoryClient # Import Mem0 cloud client
-# Initiatlize Mem0:
+from mem0 import MemoryClient
+
 def initialize_memory():
     """
-    Initializes Mem0 memory client.
+    Initializes + returns the Mem0 cloud MemoryClient using MEM0_API_KEY.
     """
-    # Configures Mem0 to use Groq as LLM to read conversations + extract memorable facts
     api_key = os.getenv("MEM0_API_KEY")
     if not api_key:
         raise ValueError("MEM0_API_KEY environment variable is not set.")
@@ -43,10 +41,19 @@ def initialize_memory():
     print("Mem0 cloud client initialized")
     return client
     
-# Memory operations:
-# Take 1 conversation exchange, format as message list, + passes to Mem0
-# Reads conversation, uses Groq LLM to extract key facts, converts to vector embeddings, + stores w/ farmer_id
+## MEMORY OPERATIONS:
 def store_memories(memory: MemoryClient, farmer_id: str, conversation_turn: dict) -> list:
+    """
+    Extracts + stores key facts from 1 conversation exchange in Mem0.
+
+    Args:
+        memory: Mem0 MemoryClient instance
+        farmer_id: unique farmer identifier for memory namespacing
+        conversation_turn: dict with 'farmer' + 'agent' message strings
+
+    Returns:
+        list of stored memory result dicts
+    """
     messages = [
         {"role": "user", "content": conversation_turn["farmer"]},
         {"role": "assistant", "content": conversation_turn["agent"]}
@@ -57,17 +64,30 @@ def store_memories(memory: MemoryClient, farmer_id: str, conversation_turn: dict
     print(f"Stored {stored_count} memories for farmer: {farmer_id}")
     return result.get("results", [])
 
-# Searches stored memories for specific farmer using semantic similarity against query string
 def retrieve_memories(memory: MemoryClient, farmer_id: str, query: str, limit: int = 5) -> list:
+    """
+    Searches stored memories for a farmer using semantic similarity.
+    
+    Args:
+        memory: Mem0 MemoryClient instance
+        farmer_id: unique farmer identifier
+        query: text to search against stored memories
+        limit: maximum number of memories to return
+
+    Returns:
+        list of relevant memory dicts
+    """
     # Mem0 MemoryClient uses user_id explicitly
     results = memory.search(query = query, filters = {"user_id": farmer_id}, limit = limit) 
     memories = results.get("results", [])
     print(f"Retrieved {len(memories)} memories for farmer: {farmer_id}")
     return memories
 
-# Returns all stored memory for farmer regardless of relevance so AI agent knows complete history
 def get_all_memories(memory: MemoryClient, farmer_id: str) -> list:
-    # Mem0 v2.0.0 uses filters dict instead of user_id parameter
+    """
+    Returns all stored memories for a farmer regardless of relevance.
+    """
+    # MemoryClient requires filters dict for get_all
     results = memory.get_all(filters={"user_id": farmer_id})
     memories = results.get("results", [])
     print(f"Total memories for {farmer_id}: {len(memories)}")
@@ -76,43 +96,37 @@ def get_all_memories(memory: MemoryClient, farmer_id: str) -> list:
 # Convert list of Mem0 memory objects into readable string
 def format_memories_for_context(memories: list) -> str:
     """
-    Formats a list of memory dicts into a readable string
-    for injection into the agent's system prompt.
+    Formats a list of Mem0 memory dicts into a readable string for system prompt injection.
 
     Args:
         memories: list of memory dicts from Mem0
 
     Returns:
-        formatted string summarizing what the agent remembers
-        about this farmer, or empty string if no memories
+        formatted memory string, or empty string if no memories
     """
-
     if not memories:
         return ""
 
     lines = ["What I remember about this farmer from previous conversations:"]
-    for i, mem in enumerate(memories):
+    for mem in memories:
         memory_text = mem.get("memory", "")
         if memory_text:
             lines.append(f"  - {memory_text}")
 
     return "\n".join(lines)
 
-# Delete all memories for given farmer
 def delete_farmer_memories(memory: MemoryClient, farmer_id: str) -> bool:
     """
-    Deletes all memories for a specific farmer.
-
-    Used when fully resetting a farmer persona to baseline.
+    Deletes all stored memories for a specific farmer.
+    Used on full persona reset.
 
     Args:
-        memory: Mem0 Memory instance
+        memory: Mem0 MemoryClient instance
         farmer_id: unique identifier for this farmer persona
 
     Returns:
         True if successful
     """
-
     memory.delete_all(user_id=farmer_id)
     print(f"Deleted all memories for farmer: {farmer_id}")
     return True

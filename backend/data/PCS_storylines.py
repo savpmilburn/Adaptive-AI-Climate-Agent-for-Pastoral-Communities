@@ -20,7 +20,7 @@ Metadata fields per chunk:
 """
 
 STORYLINES = [
-    # Mediterreanean Shift
+    # Mediterranean Shift
     {
         "chunk_id": "med_001",
         "storyline": "Mediterranean Shift",
