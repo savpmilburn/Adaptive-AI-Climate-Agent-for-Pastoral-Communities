@@ -35,7 +35,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Third party library imports
-import chromadb # ChromaDB: connect to climate database
 from langchain_groq import ChatGroq # to talk to Groq LLM
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage # LangChain's structured message types
 from langgraph.graph import StateGraph, END # core LangGraph class + constant
@@ -87,41 +86,6 @@ class AgentState(TypedDict):
     memory_context: str # formatted String of relevant memories
     farmer_id: str # unique farmer ID for Mem0
 
-# Connect to existing ChromaDB climate database
-def initialize_components():
-    """
-    Initializes ChromaDB client + Groq LLM.
-    Called once when the AI climate agent starts up.
-
-    Returns:
-        tuple of (chromadb collection, ChatGroq llm)
-    """
-
-    # Connect to existing ChromaDB climate database
-    project_root = os.path.dirname(
-        os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))
-        )
-    ) # project_root
-    chroma_path = os.path.join(project_root, "chroma_db")
-
-    # Connect to existing persistent database from load.py
-    client = chromadb.PersistentClient(path=chroma_path)
-    collection = client.get_collection("PCS_climate_content")
-    # Check print statement
-    print(f"Connected to ChromaDB — {collection.count()} chunks available")
-
-    # Initialize Groq LLM (llama-3.3-70b-versatile) = Groq's best free model
-    # temperature=0.7: responses are somewhat creative but not random
-    llm = ChatGroq(
-        model="llama-3.3-70b-versatile",
-        temperature=0.7,
-        api_key=os.getenv("GROQ_API_KEY")
-    ) # connection to Groq LLM
-    # Check print statement
-    print("Connected to Groq LLM — llama-3.3-70b-versatile")
-
-    return collection, llm
 
 # LangGraph nodes: each node is 1 step in ReAct loop
 # LangGraph calls nodes in sequence + passes state between them.
@@ -428,7 +392,7 @@ class ClimateAgent:
     For main.py + frontend. 
     """
 
-    def __init__(self, persona_key: str = "skeptic"):
+    def __init__(self, persona_key: str, collection, llm, memory, initial_belief: dict = None):
         """
         Initializes AI climate agent with a specific farmer persona.
 
@@ -438,11 +402,10 @@ class ClimateAgent:
 
         print(f"\nInitializing Climate Agent with persona: {persona_key}")
 
-        # Initialize ChromaDB climate database + Groq LLM
-        self.collection, self.llm = initialize_components()
-
-        # Initialize Mem0 memory
-        self.memory = initialize_memory()
+        # Use shared, injected components collection, llm, & memory 
+        self.collection = collection
+        self.llm = llm
+        self.memory = memory
 
         # Build LangGraph app
         self.app = build_agent(self.collection, self.llm, self.memory)
@@ -465,7 +428,7 @@ class ClimateAgent:
         self.state = {
             "farmer_message": "",
             "conversation_history": [],
-            "belief": get_persona_belief(persona_key),
+            "belief": initial_belief if initial_belief is not None else get_persona_belief(persona_key),
             "retrieved_chunks": [],
             "selected_chunk": {},
             "reasoning_trace": "",

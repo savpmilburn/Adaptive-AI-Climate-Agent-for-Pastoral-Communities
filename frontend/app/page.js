@@ -362,15 +362,15 @@ export default function Home() {
                 <div key={storyline} className="belief-bar-row">
                   <div className="belief-bar-label">{storyline}</div>
                   <div className="belief-bar-track">
-                    <div
-                      className="belief-bar-fill"
+                    <div className="belief-bar-fill"
                       style={{
                         width: `${(prob * 100).toFixed(1)}%`,
-                        backgroundColor:
-                          STORYLINE_COLORS[storyline] || "#8a9187",
+                        backgroundColor: STORYLINE_COLORS[storyline] || "#8a9187",
                       }}
                     >
-                      <span>{(prob * 100).toFixed(1)}%</span>
+                      <span className="belief-bar-pct">
+                        {(prob * 100).toFixed(1)}%
+                        </span>
                     </div>
                   </div>
                 </div>

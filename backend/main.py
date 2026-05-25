@@ -40,6 +40,34 @@ from pydantic import BaseModel # Pydantic's base class for data models
 from backend.agent.climate_agent import ClimateAgent
 from backend.agent.belief_model import FARMER_PERSONAS, belief_summary
 
+# Implementing lifespan + singleton architecture
+from contextlib import asynccontextmanager
+import chromadb
+from langchain_groq import ChatGroq
+from backend.data.load import ingest_to_client
+from backend.memory.farmer_memory import initialize_memory
+
+_collection = None
+_llm = None
+_memory = None
+
+# Create 1 EphemeralClient that ingests 20 climate chunks, creates 1 GroqLLM connection & 1 Mem0 client when server starts
+# Store in _collection, _llm, _memory as module-level globals that every session shared in singleton pattern
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _collection, _llm, _memory
+
+    # Ephemeral knowledge base, re-ingested on every cold start (~1s for 20 climate chunks)
+    chroma_client = chromadb.EphemeralClient()
+    _collection = ingest_to_client(chroma_client)
+
+    _llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7, api_key=os.getenv("GROQ_API_KEY"))
+
+    _memory = initialize_memory()
+    # Check
+    print("All components (ChromaDB client, Groq LLM client, Mem0 client) initialized. Server ready.")
+    yield
+
 # FastAPI app:
 # Create FastAPI app instance - backend connects to object
 app = FastAPI(
@@ -49,14 +77,16 @@ app = FastAPI(
         "delivers climate scenario narratives for Soule, France. "
         "Grounded in Bayesian brain theory and the Free Energy Principle."
     ),
-    version="1.0.0"
+    version="1.0.0", 
+    lifespan=lifespan,
 ) # app
 
 # CORS middleware:
 # Attach CORS middleware to API (running on localhost: 8000) allowing React requests running on localhost:3000
+_frontend_url = os.getenv("FRONTEND_URL", "")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "https://your-app.vercel.app"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173", *([_frontend_url] if _frontend_url else []), ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,6 +98,9 @@ app.add_middleware(
 # Empty dict that stores active AI agent instances in memory so each conversation session
 # needs its OWN AI Climate Agent w/ its own belief state + conversation history 
 sessions: dict[str, ClimateAgent] = {}
+
+# Maintain a farmer_beliefs dict keyed by farmer_id for belief vector persistence
+farmer_beliefs: dict[str, dict] = {}
 
 # Request/Response models: 
 # Define shape of request body for starting a session: used when frontend calls POST /session/start
@@ -175,9 +208,12 @@ def start_session(request: StartSessionRequest):
     # Generate unique session ID
     session_id = str(uuid.uuid4())
 
+    # Compute farmer_id to pass & find current belief state for farmer for belief vector persistence
+    farmer_id = f"{request.persona_key}_{FARMER_PERSONAS[request.persona_key]['name'].lower().replace(' ', '_')}"
+
     # Create new agent instance for this session
     # This initializes ChromaDB connection, Groq LLM, and LangGraph
-    agent = ClimateAgent(persona_key=request.persona_key)
+    agent = ClimateAgent(persona_key=request.persona_key, collection = _collection, llm = _llm, memory = _memory, initial_belief = farmer_beliefs.get(farmer_id), )
 
     # Store in session store
     sessions[session_id] = agent
@@ -233,6 +269,9 @@ def chat(session_id: str, request: ChatRequest):
 
     # Run the agent
     result = agent.chat(request.message)
+
+    # Belief vector persistence
+    farmer_beliefs[agent.farmer_id] = result["belief"]
 
     # Count conversation turns
     turn_number = len(agent.state["conversation_history"]) // 2
@@ -311,6 +350,9 @@ def reset_session(session_id: str, persona_key: Optional[str] = None):
             status_code=400,
             detail=f"Unknown persona: {persona_key}."
         )
+
+    # Belief vector persistence
+    farmer_beliefs.pop(agent.farmer_id, None)
 
     # Reset agent state
     agent.reset(persona_key=persona_key)

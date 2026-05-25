@@ -395,6 +395,7 @@ body {
 }
 
 .belief-bar-track {
+  position: relative;
   flex: 1;
   height: 22px;
   background: var(--color-navy-raised);
@@ -402,6 +403,18 @@ body {
   overflow: hidden;
   border: 1px solid white;
   min-width: 0;
+}
+
+.belief-bar-pct {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-accent-yellow);
+  font-size: 12px;
+  font-family: var(--font-archivo);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .belief-bar-fill {
@@ -413,6 +426,8 @@ body {
   justify-content: flex-end;
   padding-right: 10px;
   min-width: 40px;
+  overflow: visible;
+  white-space: nowrap;
 }
 
 .belief-bar-fill span {
