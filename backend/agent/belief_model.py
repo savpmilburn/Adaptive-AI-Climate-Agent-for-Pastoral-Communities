@@ -1,8 +1,7 @@
 """
 belief_model.py
 
-Defines the farmer belief model: a probability distribution over 4
-possible climate futures for Soule, France. 
+Defines the farmer belief model: a probability distribution over 4 possible climate futures for Soule, France. 
 
 The belief model is grounded in Bayesian brain theory which proposes that the brain 
 represents knowledge as probability distributions & updates them when new info arrives. 
@@ -16,37 +15,31 @@ representing how strongly they currently believe in each possible future:
     - No Change
 
 The belief vector updates after every agent-farmer exchange based on the
-farmer's response — approximating Bayesian updating with a simple heuristic.
+farmer's response, approximating Bayesian updating with a simple heuristic.
 
 Connected to the Free Energy Principle: the agent selects climate content from the database
 that maximizes expected informativeness relative to the farmer's current belief state,
 choosing what would most reduce the farmer's uncertainty about their climate future.
 """
-# Belief vector definitions:
-# 4 plausible futures where No Change means prior belief that climate will NOT significantly change
 STORYLINES = [
     "Mediterranean Shift",
     "Moist Atlantic",
     "Tropical Basque",
     "No Change"
-] # STORYLINES
+] # 4 plausible climate futures where No Change means prior belief that climate will NOT significantly change
 
-# Dictionary of default farmer w/ NO strong prior belief in any direction: 
-# 25% prob. across all 4 climate futures
 DEFAULT_BELIEF = {
     "Mediterranean Shift": 0.25,
     "Moist Atlantic": 0.25,
     "Tropical Basque": 0.25,
     "No Change": 0.25
-} # DEFAULT_BELIEF
+} # default farmer with no strong prior belief in any direction
 
-# Synthetic farmer personas:
-# 3 farmer profiles w/ a name, description, starting belief vector, + preferred response style
 FARMER_PERSONAS = {
     "skeptic": {
         "name": "Jean-Pierre",
         "description": (
-            "A experienced highland farmer who has worked the same pastures "
+            "An experienced highland farmer who has worked the same pastures "
             "for 30 years. Skeptical of external climate projections. "
             "Anchors strongly on personal memory and past experience. "
             "Responds better to temporal analogs than statistics."
@@ -57,7 +50,6 @@ FARMER_PERSONAS = {
             "Tropical Basque": 0.10,
             "No Change": 0.65
         },
-        # Keywords in farmer responses that signal agreement or skepticism
         "response_style": "experiential"
     },
     "worried": {
@@ -92,27 +84,21 @@ FARMER_PERSONAS = {
         },
         "response_style": "narrative"
     }
-} # FARMER_PERSONAS
+} # 3 synthetic farmer personas
 
-# Belief update keywords: AI climate agent looks for these keywords in farmer
-# responses to handle reasoning & next responses 
-
-# If farmer mentions these words, increase storyline's prob.
+## AGREEMENT + SKEPTICISIM SIGNALS for BELIEF UPDATING:
 AGREEMENT_SIGNALS = [
     "yes", "right", "exactly", "agree", "true", "correct",
     "noticed", "remember", "experienced", "happened", "seen",
     "makes sense", "that's right", "definitely", "absolutely"
-] # AGREEMENT_SIGNALS
+] # increase storyline's probability
 
-# If a farmer mentions these words, decrease storyline's prob.
 SKEPTICISM_SIGNALS = [
     "no", "wrong", "disagree", "doubt", "unlikely", "never",
     "don't think", "not sure", "skeptical", "hard to believe",
     "always been", "nothing changed", "normal", "always like this"
-] # SKEPTICISM_SIGNALS
+] # decrease storyline's probability
 
-# Storyline-specific keywords
-# If farmer mentions these, increase  storyline's prob. weight
 STORYLINE_KEYWORDS = {
     "Mediterranean Shift": [
         "dry", "drought", "hot", "heat", "fire", "water",
@@ -130,9 +116,9 @@ STORYLINE_KEYWORDS = {
         "normal", "always", "same", "nothing", "unchanged",
         "always been", "like always", "no difference"
     ]
-} # STORYLINE_KEYWORDS
+} # each match increases storyline's probability weight
 
-# Core belief functions:
+## CORE BELIEF FUNCTIONS:
 def get_persona_belief(persona_key: str) -> dict:
     """
     Returns starting belief vector for a given farmer persona.
@@ -154,9 +140,7 @@ def normalize_belief(belief: dict) -> dict:
     """
     Normalizes a belief vector so all probabilities sum to 1.0.
 
-    This is required after every update to maintain a valid
-    probability distribution — the mathematical requirement of
-    Bayesian belief representations.
+    This is required after every update to maintain a valid probability distribution for Bayesian belief approximation.
 
     Args:
         belief: dict mapping storyline name to probability float
@@ -165,20 +149,13 @@ def normalize_belief(belief: dict) -> dict:
         normalized belief dict where values sum to 1.0
     """
     total = sum(belief.values())
-
-    # Check to avoid division by 0
     if total == 0:
         return DEFAULT_BELIEF.copy()
 
-    # Divide each probability by total to normalize
     return {storyline: prob / total for storyline, prob in belief.items()}
 
 
-def update_belief(
-    current_belief: dict,
-    farmer_response: str,
-    delivered_chunk: dict
-) -> dict:
+def update_belief(current_belief: dict, farmer_response: str, delivered_chunk: dict) -> dict:
     """
     Updates farmer belief vector after one agent-farmer exchange.
 
@@ -195,17 +172,13 @@ def update_belief(
     Args:
         current_belief: dict mapping storyline to current probability
         farmer_response: str, the raw text of what the farmer said
-        delivered_chunk: dict, the content chunk the agent just delivered
-                        must contain 'storyline' key
+        delivered_chunk: dict, the content chunk the agent just delivered must contain 'storyline' key
 
     Returns:
         updated and normalized belief dict
     """
-    # Make a copy of belief, convert to lowercase, check for agreement/skepticism + get delivered storyline
-    # Work on a copy so we never mutate the original
+    # Work on a copy of belief so we never mutate the original
     belief = current_belief.copy()
-
-    # Convert response to lowercase for keyword matching
     response_lower = farmer_response.lower()
 
     # Detect agreement or skepticism in the response
@@ -215,38 +188,27 @@ def update_belief(
     # Get the storyline of the content that was just delivered
     delivered_storyline = delivered_chunk.get("storyline", None)
 
-    # Update Rule 1:
-    # If farmer agreed + we know which storyline was delivered, increase that storyline's probability by 40%
+    # Update Rule 1: agreement means increase delivered storyline by 40%, reduce No Change belief
     if expressed_agreement and delivered_storyline and delivered_storyline in belief:
         belief[delivered_storyline] *= 1.4
-        # Slightly decrease No Change since agreement with a scenario implies some acceptance that change is coming
         belief["No Change"] *= 0.8
 
-    # Update Rule 2:
-    # If farmer expressed skepticism &  we know which storyline was delivered, decrease that storyline's probability by 20%
+    # Update Rule 2: skepticism means decrease delivered storyline by 20%, increase No Change belief
     if expressed_skepticism and delivered_storyline and delivered_storyline in belief:
         belief[delivered_storyline] *= 0.8
-        # Slightly increase No Change since skepticism implies the farmer may believe less change is coming
         belief["No Change"] *= 1.2
 
-    # --- UPDATE RULE 3 ---
-    # Scan response for storyline-specific keywords regardless of agreement or skepticism
-    # Ex: if farmer mentions drought, heat, 2022 that's a Med. Shift signal even if no explicit agreement/disagreement
+    # Update Rule 3: storyline-specifici keywords increase storyline's weight by 5% regardless of explicit agreement/skepticism
     for storyline, keywords in STORYLINE_KEYWORDS.items():
         keyword_matches = sum(1 for kw in keywords if kw in response_lower)
         if keyword_matches > 0:
-            # Each keyword match increases that storyline up by 5%
             belief[storyline] *= (1.0 + (0.05 * keyword_matches))
 
-    # Normalize so probabilities sum back to 1.0 & return belief
     belief = normalize_belief(belief)
     return belief
 
 
-def get_content_priority(
-    current_belief: dict,
-    available_chunks: list
-) -> list:
+def get_content_priority(current_belief: dict, available_chunks: list) -> list:
     """
     Ranks available climate content chunks by expected informativeness
     given the farmer's current belief state.
@@ -256,10 +218,8 @@ def get_content_priority(
     from storylines the farmer currently underweights relative to their plausibility.
 
     Simple implementation: chunks from lower-probability storylines
-    are ranked higher because they carry more new information for
-    this farmer. 
-    Ex. a farmer who already strongly believes in Med. Shift needs less 
-    info about it — they need info about the other scenarios to reduce overall uncertainty.
+    are ranked higher because they carry more new information for this farmer. 
+    Ex. a farmer who already strongly believes in Med. Shift needs less info about it, they need info about the other scenarios to reduce overall uncertainty.
 
     Args:
         current_belief: dict mapping storyline to current probability
@@ -270,23 +230,28 @@ def get_content_priority(
     """
 
     def priority_score(chunk):
+        """
+        Scores a climate content chunk by informativeness with lower belief meaning higher priority. 
+
+        Args:
+            chunk: dict containing 'storyline' + 'abstraction_level' keys
+
+        Returns:
+            float priority score for a farmer
+        """
         storyline = chunk.get("storyline", "")
 
-        # Get current belief probability for this climate chunk's storyline
         # Lower belief = higher priority (more informative)
         storyline_belief = current_belief.get(storyline, 0.25)
 
         # Invert so lower belief = higher score
-        # Ex. A storyline with 0.10 belief gets score 0.90
         informativeness = 1.0 - storyline_belief
 
-        # Bonus for experiential abstraction level —
-        # temporal analogs are more effective for farmers regardless of belief state
+        # Bonus for experiential abstraction level since temporal analogs are more effective
         abstraction_bonus = 0.1 if chunk.get("abstraction_level") == "experiential" else 0.0
 
         return informativeness + abstraction_bonus
 
-    # Sort chunks by priority score, highest first
     return sorted(available_chunks, key=priority_score, reverse=True)
 
 
@@ -302,7 +267,6 @@ def belief_summary(belief: dict) -> str:
         formatted string showing current belief distribution
     """
     lines = ["Current farmer belief state:"]
-    # Sort by probability descending so highest belief shows first
     sorted_belief = sorted(belief.items(), key=lambda x: x[1], reverse=True)
     for storyline, prob in sorted_belief:
         # Visual bar using unicode blocks for terminal display
