@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import axios from "axios";
+
 // Deploying to Vercel: point to Railway backend URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -74,6 +75,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const chatEndRef = useRef(null);
+  
   // Groq free API key daily token limit estimate
   const [tokensUsed, setTokensUsed] = useState(0);
   const TOKEN_LIMIT = 100000;
@@ -147,21 +149,21 @@ export default function Home() {
       setTurnCount(data.turn_number);
       setTokensUsed(prev => prev + TOKENS_PER_TURN_ESTIMATE);
     } catch (error) {
-        const isRateLimit = error?.response?.status === 429 || error?.response?.data?.detail?.includes("rate") || error?.message?.includes("429");
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "agent",
-            content: isRateLimit
-              ? "The free API token limit has been reached for today. Please try again in a few minutes or tomorrow. This is a limitation of the free Groq tier used in this prototype."
-              : "Sorry, something went wrong. Please try again.",
-            storyline: "",
-            abstraction: "",
-          },
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
+      const isRateLimit = error?.response?.status === 429 || error?.response?.data?.detail?.includes("rate") || error?.message?.includes("429");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "agent",
+          content: isRateLimit
+            ? "The free API token limit has been reached for today. Please try again in a few minutes or tomorrow. This is a limitation of the free Groq tier used in this prototype."
+            : "Sorry, something went wrong. Please try again.",
+          storyline: "",
+          abstraction: "",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   function handleKeyDown(e) {
@@ -189,14 +191,14 @@ export default function Home() {
 
   return (
     <div>
-      {/* Header */}
+      {/* HEADER */}
       <div className="header">
         <div>
           <div className="header-title">
             Adaptive AI Climate Agent for Pastoral Communities in Soule, France
           </div>
           <div className="header-subtitle">
-            VIPR WeatherRisk: Climate Futures @  The University of Georgia
+            VIPR WeatherRisk: Climate Futures @ The University of Georgia
           </div>
         </div>
         <button className="reset-button" onClick={handleReset}>
@@ -204,7 +206,7 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Explanation Banner */}
+      {/* EXPLANATION BANNER */}
       <div style={{
         backgroundColor: "var(--color-navy)",
         borderBottom: `1px solid var(--color-navy-border)`,
@@ -235,7 +237,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Token Limitation Banner */}
+      {/* API TOKEN LIMIT BANNER */}
       <div style={{
         backgroundColor: "var(--color-navy-raised)",
         borderBottom: `1px solid var(--color-navy-border)`,
@@ -256,10 +258,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Main Layout */}
+      {/* MAIN LAYOUT */}
       <div className="main-layout">
 
-        {/* LEFT PANEL — Light — Chat */}
+        {/* CHAT PANEL */}
         <div className="panel panel-light">
           <div className="panel-header-light">
             Farmer Conversation
@@ -347,7 +349,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* RIGHT PANEL — Dark — Belief Dashboard */}
+        {/* BELIEF STATE PANEL */}
         <div className="panel panel-dark">
           <div className="panel-header-dark">
             Belief Dashboard
