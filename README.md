@@ -1,6 +1,8 @@
 # Adaptive AI Climate Agent for Pastoral Communities
 ![A flock of sheep begins its descent into the valley at the end of summer, in the Soula Valley, on September 14, 2022 from https://www.theatlantic.com/photo/2022/09/new-generation-shepherds-french-pyrenees/671582/](https://cdn.theatlantic.com/thumbor/XQvLugXKNjHCvUNTdEyaok3jv2g=/1200x800/media/img/photo/2022/09/shepherdess/a06_1243417033/original.jpg)
-**Built upon climate science research co-produced with pastoral farming communities in the French Basque Pyrenees, led by Dr. Thomas Mote's WeatherRisk VIPR team @ The University of Georgia.**
+**Built upon climate science research co-produced with pastoral farming communities in the French Basque Pyrenees, led by [Dr. Thomas Mote's](https://www.geography.uga.edu/directory/people/thomas-mote?utm_) [WeatherRisk VIPR team](https://vipr.uga.edu/team/translating-weather-risks-for-people-and-places/) @ The University of Georgia.**
+## Live Demo
+[adaptive-climate-agent.vercel.app](https://adaptive-climate-agent.vercel.app)
 ## The Problem
 Farming communities in the French Basque Pyrenees make critical decisions based on understanding seasonal climate patterns such as when to move livestock and how to manage pastures & optimize production. Climate scientists traditionally produce technical projections for farmers & stakeholders every year; however, these projections are not understandable or useful for the people who need them most. 
 ## The Solution
