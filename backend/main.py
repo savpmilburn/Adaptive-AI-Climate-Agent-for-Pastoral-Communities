@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
     chroma_client = chromadb.EphemeralClient()
     _collection = ingest_to_client(chroma_client)
 
-    _llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7, api_key=os.getenv("GROQ_API_KEY"))
+    _llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.7, api_key=os.getenv("GROQ_API_KEY"))
 
     _memory = initialize_memory()
 
